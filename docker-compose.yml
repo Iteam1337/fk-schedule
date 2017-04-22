@@ -1,0 +1,40 @@
+version: "3"
+services:
+  rabbitmq:
+    image: iteam1337/rabbitmq-delayed:3.6
+    ports:
+      - 5672:5672
+      - 15672:15672
+  postgres:
+    image: postgres:9.6
+    environment:
+      - POSTGRES_USER=pguser
+      - POSTGRES_PASSWORD=pgpass
+      - POSTGRES_DB=pgdb
+    ports:
+      - 5432:5432
+  dispatch:
+    image: iteam1337/fk-dispatch:1.0.0
+    ports:
+      - 4000:4000
+    environment:
+      - PORT=4000
+      - RABBITMQ__HOST=amqp://rabbitmq
+  logs:
+    image: iteam1337/fk-logs:1.0.0
+    ports:
+      - 3000:3000
+    environment:
+      - PORT=3000
+      - RABBITMQ__HOST=amqp://rabbitmq
+      - ELASTICSEARCH__HOST=http://elasticsearch:9200
+  elasticsearch:
+    image: elasticsearch:5.3
+    ports:
+      - 9200:9200
+  kibana:
+    image: kibana:5.3
+    ports:
+      - 5601:5601
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
