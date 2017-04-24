@@ -11,8 +11,8 @@ from sqlalchemy import event, types
 
 import pika
 
-rabbit_host = os.environ.get('RABBITMQ_HOST', 'ampq://localhost')
-postgresql_host = os.environ.get('POSTGRESQL_HOST', 'postgresql://pguser:pgpass@localhost:5432/pgdb')
+rabbit_host = os.environ.get('RABBITMQ__HOST', 'ampq://localhost')
+postgresql_host = os.environ.get('POSTGRES__HOST', 'postgresql://pguser:pgpass@localhost:5432/pgdb')
 
 connection = pika.BlockingConnection(pika.URLParameters(rabbit_host))
 channel = connection.channel()
@@ -64,15 +64,15 @@ def send_message(mapper, connection, pickup):
     message = dict(
         source='schedule',
         action='pickup',
+        time=pickup.time.isoformat(),
         data=dict(
             name=pickup.speaker.name,
-            location=pickup.location
+            location=pickup.location,
         )
     )
-    when = datetime.datetime.now() + datetime.timedelta(seconds=30)
-    # when = pickup.time - datetime.timedelta(minutes=30)
+    delay = pickup.time - datetime.timedelta(minutes=30) - datetime.datetime.now()
     headers = {
-       'x-delay':  when.isoformat()
+       'x-delay': delay.seconds * 1000
     }
     channel.basic_publish(
         exchange='dispatch',
