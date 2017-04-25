@@ -16,9 +16,11 @@ postgresql_host = os.environ.get('POSTGRES__HOST', 'postgresql://pguser:pgpass@l
 
 
 channel = None
+connection = None
 
 def get_channel():
     global channel
+    global connection
     if channel is not None:
         return channel
     connection = pika.BlockingConnection(pika.URLParameters(rabbit_host))
