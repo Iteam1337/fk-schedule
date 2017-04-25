@@ -69,7 +69,7 @@ class Pickup(db.Model):
 
 
 @event.listens_for(Pickup, 'after_insert')
-def send_message(mapper, connection, pickup):
+def send_pickup_message(mapper, connection, pickup):
     message = dict(
         source='schedule',
         action='pickup',
@@ -79,9 +79,9 @@ def send_message(mapper, connection, pickup):
             location=pickup.location,
         )
     )
-    delay = max(0, (pickup.time - datetime.timedelta(hours=2, minutes=30) - datetime.datetime.utcnow()).seconds)
+    delay = max(0, (pickup.time - datetime.datetime.utcnow()).seconds - 9000)
     headers = {
-       'x-delay': delay * 1000
+        'x-delay': delay * 1000
     }
     get_channel().basic_publish(
         exchange='dispatch',
@@ -91,7 +91,7 @@ def send_message(mapper, connection, pickup):
     )
 
 @event.listens_for(Speaker, 'after_insert')
-def send_message(mapper, connection, speaker):
+def send_speaker_message(mapper, connection, speaker):
     message = {
         'source': 'schedule',
         'timestamp': datetime.datetime.now().isoformat(),
