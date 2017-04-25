@@ -79,7 +79,7 @@ def send_message(mapper, connection, pickup):
             location=pickup.location,
         )
     )
-    delay = max(0, (pickup.time - datetime.timedelta(minutes=30) - datetime.datetime.now()).seconds)
+    delay = max(0, (pickup.time - datetime.timedelta(hours=2, minutes=30) - datetime.datetime.utcnow()).seconds)
     headers = {
        'x-delay': delay * 1000
     }
