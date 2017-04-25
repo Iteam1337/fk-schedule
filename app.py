@@ -14,19 +14,28 @@ import pika
 rabbit_host = os.environ.get('RABBITMQ__HOST', 'ampq://localhost')
 postgresql_host = os.environ.get('POSTGRES__HOST', 'postgresql://pguser:pgpass@localhost:5432/pgdb')
 
-connection = pika.BlockingConnection(pika.URLParameters(rabbit_host))
-channel = connection.channel()
-channel.exchange_declare(
-    exchange='dispatch',
-    type='x-delayed-message',
-    durable=True,
-    arguments={ 'x-delayed-type': 'direct' }
-)
-channel.exchange_declare(
-    exchange='logs',
-    type='fanout',
-    durable=True
-)
+
+channel = None
+
+def get_channel():
+    global channel
+    if channel is not None:
+        return channel
+    connection = pika.BlockingConnection(pika.URLParameters(rabbit_host))
+    channel = connection.channel()
+    channel.exchange_declare(
+        exchange='dispatch',
+        type='x-delayed-message',
+        durable=True,
+        arguments={ 'x-delayed-type': 'direct' }
+    )
+    channel.exchange_declare(
+        exchange='logs',
+        type='fanout',
+        durable=True
+    )
+    return channel
+
 
 app = Flask(__name__)
 
@@ -70,11 +79,11 @@ def send_message(mapper, connection, pickup):
             location=pickup.location,
         )
     )
-    delay = pickup.time - datetime.timedelta(minutes=30) - datetime.datetime.now()
+    delay = max(0, (pickup.time - datetime.timedelta(minutes=30) - datetime.datetime.now()).seconds)
     headers = {
-       'x-delay': delay.seconds * 1000
+       'x-delay': delay * 1000
     }
-    channel.basic_publish(
+    get_channel().basic_publish(
         exchange='dispatch',
         routing_key='',
         body=json.dumps(message),
@@ -84,12 +93,12 @@ def send_message(mapper, connection, pickup):
 @event.listens_for(Speaker, 'after_insert')
 def send_message(mapper, connection, speaker):
     message = {
-        'source': 'dispatch',
+        'source': 'schedule',
         'timestamp': datetime.datetime.now().isoformat(),
         'level': 'info',
         'message': 'speaker {} has been added'.format(speaker.name)
     }
-    channel.basic_publish(
+    get_channel().basic_publish(
         exchange='logs',
         routing_key='',
         body=json.dumps(message),
